@@ -1,15 +1,33 @@
 # masrofy
 
-A new Flutter project.
+lib/
+├── core/
+│   ├── constants/
+│   └── utils/
+├── data/
+│   ├── local/
+│   │   └── database_helper.dart
+│   └── repositories/
+│       ├── i_finance_repository.dart
+│       └── sqlite_finance_repository.dart
+├── logic/
+│   ├── finance_provider.dart
+│   └── finance_calculator_service.dart
+├── models/
+│   ├── budget_cycle.dart
+│   ├── category.dart
+│   ├── expense.dart
+│   └── user.dart
+├── presentation/
+│   ├── screens/
+│   │   ├── add_expense_screen.dart
+│   │   ├── dashboard_screen.dart
+│   │   └── splash_screen.dart
+│   └── widgets/
+│       ├── expense_pie_chart.dart
+│       └── safe_limit_card.dart
+└── main.dart
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
