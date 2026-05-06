@@ -35,7 +35,6 @@ class SqliteFinanceRepository implements IFinanceRepository {
   Future<List<Category>> getCategories() async {
     final db = await _dbHelper.database;
     final maps = await db.query('Category');
-    // بنحول الداتا اللي راجعة من الداتابيز لأوبجكتس
     return List.generate(maps.length, (i) => Category.fromMap(maps[i]));
   }
 
@@ -46,7 +45,7 @@ class SqliteFinanceRepository implements IFinanceRepository {
     if (maps.isNotEmpty) {
       return BudgetCycle.fromMap(maps.first);
     }
-    return null; // لو مفيش دورة ميزانية لسه
+    return null; 
   }
 
   @override
@@ -55,7 +54,6 @@ class SqliteFinanceRepository implements IFinanceRepository {
     String? whereClause;
     List<dynamic>? whereArgs;
 
-    // لو باعتين تواريخ، بنعمل فلتر بيهم
     if (startDate != null && endDate != null) {
       whereClause = 'date >= ? AND date <= ?';
       whereArgs = [startDate.toIso8601String(), endDate.toIso8601String()];
@@ -81,7 +79,6 @@ class SqliteFinanceRepository implements IFinanceRepository {
       whereArgs = [startDate.toIso8601String(), endDate.toIso8601String()];
     }
 
-    // هنا بنعمل Group By عشان نجمع المصاريف لكل قسم
     final result = await db.rawQuery(
       'SELECT categoryId, SUM(amount) as total FROM Expense $where GROUP BY categoryId',
       whereArgs.isEmpty ? null : whereArgs,
@@ -105,7 +102,6 @@ class SqliteFinanceRepository implements IFinanceRepository {
       whereArgs = [startDate.toIso8601String(), endDate.toIso8601String()];
     }
 
-    // بنجيب مجموع المصاريف كلها
     final result = await db.rawQuery(
       'SELECT SUM(amount) as total FROM Expense $where',
       whereArgs.isEmpty ? null : whereArgs,
