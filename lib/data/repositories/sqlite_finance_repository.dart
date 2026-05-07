@@ -10,14 +10,20 @@ import '../../models/budget_cycle.dart';
 import '../../models/user.dart';
 import 'i_finance_repository.dart';
 
+/// An implementation of [IFinanceRepository] using [SharedPreferences] for local storage.
+/// 
+/// Note: Despite the class name, this currently persists data as JSON strings 
+/// within Shared Preferences rather than a SQLite database.
 class SqliteFinanceRepository implements IFinanceRepository {
   static const String _categoriesKey = 'categories';
   static const String _expensesKey = 'expenses';
   static const String _budgetCycleKey = 'budget_cycle';
   static const String _userKey = 'user';
 
+  /// Helper to get the [SharedPreferences] instance.
   Future<SharedPreferences> get _prefs async => SharedPreferences.getInstance();
 
+  /// Internal helper to load and decode categories from local storage.
   Future<List<Category>> _loadCategories() async {
     final prefs = await _prefs;
     final raw = prefs.getString(_categoriesKey);
@@ -28,6 +34,7 @@ class SqliteFinanceRepository implements IFinanceRepository {
         .toList();
   }
 
+  /// Internal helper to encode and save categories to local storage.
   Future<void> _saveCategories(List<Category> categories) async {
     final prefs = await _prefs;
     await prefs.setString(
@@ -36,6 +43,7 @@ class SqliteFinanceRepository implements IFinanceRepository {
     );
   }
 
+  /// Internal helper to load and decode expenses from local storage.
   Future<List<Expense>> _loadExpenses() async {
     final prefs = await _prefs;
     final raw = prefs.getString(_expensesKey);
@@ -46,6 +54,7 @@ class SqliteFinanceRepository implements IFinanceRepository {
         .toList();
   }
 
+  /// Internal helper to encode and save expenses to local storage.
   Future<void> _saveExpenses(List<Expense> expenses) async {
     final prefs = await _prefs;
     await prefs.setString(

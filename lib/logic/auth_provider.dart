@@ -5,17 +5,22 @@ import '../data/repositories/i_finance_repository.dart';
 import '../data/repositories/sqlite_finance_repository.dart';
 import '../models/user.dart';
 
+/// Manages user authentication state, PIN verification, and user profile persistence.
 class AuthProvider extends ChangeNotifier {
   final IFinanceRepository _repo;
   User? _currentUser;
 
+  /// Creates an [AuthProvider]. Optionally accepts a custom [IFinanceRepository].
   AuthProvider({IFinanceRepository? repo})
     : _repo = repo ?? SqliteFinanceRepository();
 
+  /// Returns the currently authenticated [User], or null if not logged in.
   User? get currentUser => _currentUser;
 
+  /// Returns true if a user is currently authenticated.
   bool get isAuthenticated => _currentUser != null;
 
+  /// Initializes the provider by fetching the stored user from the repository.
   Future<void> init() async {
     developer.log('AuthProvider: init called', name: 'AuthProvider');
     _currentUser = await _repo.getUser();
@@ -26,6 +31,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Verifies the provided [pin] against the stored user hash.
+  /// 
+  /// Returns `true` if authentication is successful and updates [currentUser].
   Future<bool> authenticate(String pin) async {
     developer.log(
       'AuthProvider: authenticate called with pin=$pin',
@@ -42,12 +50,6 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
 
-    final hashedInput = User.hashPIN(pin);
-    developer.log(
-      'AuthProvider: hashedInput=$hashedInput, storedHash=${user.hashedPIN}',
-      name: 'AuthProvider',
-    );
-
     final isValid = user.verifyPIN(pin);
     developer.log('AuthProvider: isValid=$isValid', name: 'AuthProvider');
 
@@ -58,6 +60,7 @@ class AuthProvider extends ChangeNotifier {
     return isValid;
   }
 
+  /// Creates or updates a user with a new [pin].
   Future<void> setPIN(String pin) async {
     developer.log(
       'AuthProvider: setPIN called with pin=$pin',
@@ -69,45 +72,34 @@ class AuthProvider extends ChangeNotifier {
       hashedPIN: User.hashPIN(pin),
       isFirstTime: false,
     );
-    developer.log(
-      'AuthProvider: saving user=${user.toMap()}',
-      name: 'AuthProvider',
-    );
     await _repo.saveUser(user);
     _currentUser = user;
     notifyListeners();
-    developer.log(
-      'AuthProvider: user saved successfully',
-      name: 'AuthProvider',
-    );
   }
 
+  /// Checks if a user has already set up a PIN in the system.
   Future<bool> hasSetupPIN() async {
     final user = await _repo.getUser();
     return user != null && user.hashedPIN.isNotEmpty;
   }
 
+  /// Clears the current user session.
   Future<void> logout() async {
     _currentUser = null;
     notifyListeners();
   }
 
+  /// Changes the user's PIN after verifying the [oldPIN].
+  /// 
+  /// Returns `false` if the [oldPIN] is incorrect or no user exists.
   Future<bool> changePIN(String oldPIN, String newPIN) async {
     developer.log('AuthProvider: changePIN called', name: 'AuthProvider');
 
     final user = await _repo.getUser();
-    if (user == null) {
-      developer.log('AuthProvider: user is null', name: 'AuthProvider');
+    if (user == null || !user.verifyPIN(oldPIN)) {
       return false;
     }
 
-    // Verify old PIN
-    if (!user.verifyPIN(oldPIN)) {
-      developer.log('AuthProvider: old PIN incorrect', name: 'AuthProvider');
-      return false;
-    }
-
-    // Create new user with new PIN
     final newUser = User(
       id: user.id,
       firstName: user.firstName,
@@ -118,11 +110,6 @@ class AuthProvider extends ChangeNotifier {
     await _repo.saveUser(newUser);
     _currentUser = newUser;
     notifyListeners();
-
-    developer.log(
-      'AuthProvider: PIN changed successfully',
-      name: 'AuthProvider',
-    );
     return true;
   }
 }
