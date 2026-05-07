@@ -1,7 +1,7 @@
 class Expense {
   final int? id;
   final double amount;
-  final String? description;
+  final String? note;
   final int? categoryId;
   final DateTime date;
   final int? userId;
@@ -9,7 +9,7 @@ class Expense {
   Expense({
     this.id,
     required this.amount,
-    this.description,
+    this.note,
     this.categoryId,
     required this.date,
     this.userId,
@@ -19,7 +19,7 @@ class Expense {
     return {
       'id': id,
       'amount': amount,
-      'description': description,
+      'note': note,
       'category_id': categoryId,
       'date': date.toIso8601String(),
       'user_id': userId,
@@ -30,7 +30,7 @@ class Expense {
     return Expense(
       id: map['id'] as int?,
       amount: (map['amount'] as num).toDouble(),
-      description: map['description'] as String?,
+      note: map['note'] as String?,
       categoryId: map['category_id'] as int?,
       date: DateTime.parse(map['date'] as String),
       userId: map['user_id'] as int?,
@@ -40,7 +40,7 @@ class Expense {
   Expense copyWith({
     int? id,
     double? amount,
-    String? description,
+    String? note,
     int? categoryId,
     DateTime? date,
     int? userId,
@@ -48,7 +48,7 @@ class Expense {
     return Expense(
       id: id ?? this.id,
       amount: amount ?? this.amount,
-      description: description ?? this.description,
+      note: note ?? this.note,
       categoryId: categoryId ?? this.categoryId,
       date: date ?? this.date,
       userId: userId ?? this.userId,

@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+
+import '../../core/utils/currency_formatter.dart';
 import '../../models/category.dart';
 
 class ExpensePieChart extends StatelessWidget {
@@ -14,92 +16,220 @@ class ExpensePieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (expensesByCategory.isEmpty) {
-      return const Center(child: Text('لا توجد بيانات'));
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FBFA),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFFE2EEEA)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F4F1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.pie_chart_outline_rounded,
+                  color: Color(0xFF2A7C6C),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'لا توجد بيانات كافية لعرض الرسم',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF173B35),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'أضف بعض المصروفات لتظهر لك الفئات الأكثر استهلاكًا.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF677873),
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
-    final total = expensesByCategory.values.fold(0.0, (a, b) => a + b);
-    final sections = <PieChartSectionData>[];
-    final categoryNames = <String>[];
+    final entries = expensesByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final total = entries.fold<double>(0.0, (sum, entry) => sum + entry.value);
 
-    expensesByCategory.forEach((categoryId, amount) {
-      final category = categories.firstWhere(
-        (c) => c.id == categoryId,
-        orElse: () => Category(name: 'أخرى'),
-      );
-      final percentage = (amount / total) * 100;
+    final sections = entries.map((entry) {
+      final percentage = (entry.value / total) * 100;
 
-      sections.add(
-        PieChartSectionData(
-          value: amount,
-          title: '${percentage.toStringAsFixed(0)}%',
-          color: _getCategoryColor(categoryId),
-          radius: 60,
-          titleStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+      return PieChartSectionData(
+        value: entry.value,
+        title: percentage >= 8 ? '${percentage.toStringAsFixed(0)}%' : '',
+        color: _getCategoryColor(entry.key),
+        radius: 72,
+        titlePositionPercentageOffset: 0.62,
+        titleStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
         ),
       );
-      categoryNames.add(category.name);
-    });
+    }).toList();
 
-    return Row(
-      children: [
-        Expanded(
-          child: PieChart(
-            PieChartData(
-              sections: sections,
-              centerSpaceRadius: 40,
-              sectionsSpace: 2,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useColumnLayout = constraints.maxWidth < 440;
+
+        final chart = SizedBox(
+          height: 250,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  sections: sections,
+                  centerSpaceRadius: 64,
+                  sectionsSpace: 4,
+                  startDegreeOffset: -90,
+                  borderData: FlBorderData(show: false),
+                  pieTouchData: PieTouchData(enabled: false),
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'الإجمالي',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF71807B),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    CurrencyFormatter.formatCompact(total),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: const Color(0xFF133A33),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 16),
-        Column(
+        );
+
+        final legend = Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: List.generate(
-            expensesByCategory.length > 4 ? 4 : expensesByCategory.length,
-            (index) {
-              final entry = expensesByCategory.entries.elementAt(index);
-              final category = categories.firstWhere(
-                (c) => c.id == entry.key,
-                orElse: () => Category(name: 'أخرى'),
-              );
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+          children: entries.take(4).map((entry) {
+            final category = categories.firstWhere(
+              (item) => item.id == entry.key,
+              orElse: () => Category(name: 'أخرى'),
+            );
+            final percentage = total > 0 ? (entry.value / total) * 100 : 0.0;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FCFB),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE4EFEC)),
+                ),
                 child: Row(
                   children: [
                     Container(
-                      width: 12,
-                      height: 12,
-                      color: _getCategoryColor(entry.key),
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: _getCategoryColor(entry.key),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(category.name, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.name,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: const Color(0xFF173A34),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            CurrencyFormatter.format(entry.value),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF6C7D78),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${percentage.toStringAsFixed(0)}%',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFF2A7B6B),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ],
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+            );
+          }).toList(),
+        );
+
+        if (useColumnLayout) {
+          return Column(
+            children: [
+              chart,
+              const SizedBox(height: 18),
+              legend,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(flex: 5, child: chart),
+            const SizedBox(width: 20),
+            Expanded(flex: 4, child: legend),
+          ],
+        );
+      },
     );
   }
 
   Color _getCategoryColor(int categoryId) {
-    final colors = [
-      Colors.blue,
-      Colors.red,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.amber,
+    const colors = [
+      Color(0xFF1F8A70),
+      Color(0xFF0F766E),
+      Color(0xFFE67E22),
+      Color(0xFFCC5A71),
+      Color(0xFF3A86FF),
+      Color(0xFF7C5CFC),
+      Color(0xFF16A34A),
+      Color(0xFFDC2626),
     ];
+
     return colors[categoryId % colors.length];
   }
 }

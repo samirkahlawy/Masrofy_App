@@ -1,0 +1,355 @@
+@startuml
+title Masrofy - Class Diagram
+
+left to right direction
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+hide empty members
+
+
+package "App Entry" {
+  class MasrofyApp <<App>> {
+    + build(context): Widget
+  }
+}
+
+package "Models" {
+  class User <<Model>> {
+    + id: int?
+    + firstName: String
+    + hashedPIN: String
+    + isFirstTime: bool
+    + toMap(): Map<String,dynamic>
+    + fromMap(map): User
+    + verifyPIN(rawPIN: String): bool
+    + {static} hashPIN(rawPIN: String): String
+  }
+
+  class Expense <<Model>> {
+    + id: int?
+    + amount: double
+    + note: String?
+    + categoryId: int?
+    + date: DateTime
+    + userId: int?
+    + toMap(): Map<String,dynamic>
+    + fromMap(map): Expense
+    + copyWith(...): Expense
+  }
+
+  class Category <<Model>> {
+    + id: int?
+    + name: String
+    + iconPath: String?
+    + toMap(): Map<String,dynamic>
+    + fromMap(map): Category
+    + copyWith(...): Category
+  }
+
+  class BudgetCycle <<Model>> {
+    + id: int?
+    + userId: int
+    + totalAllowance: double
+    + remainingBalance: double
+    + startDate: DateTime
+    + endDate: DateTime
+    + expenses: List<Expense>
+    + toMap(): Map<String,dynamic>
+    + fromMap(map): BudgetCycle
+    + isExpired(): bool
+    + calculateDailyLimit(): double
+  }
+}
+
+package "Data Layer" {
+  interface IFinanceRepository <<Repository Interface>> {
+    + getActiveCycle(): Future<BudgetCycle?>
+    + saveCycle(cycle: BudgetCycle): Future<void>
+    + addExpense(expense: Expense): Future<void>
+    + getExpenses(startDate, endDate): Future<List<Expense>>
+    + deleteExpense(id: int): Future<void>
+    + getUser(): Future<User?>
+    + saveUser(user: User): Future<void>
+    + getCategories(): Future<List<Category>>
+    + addCategory(category: Category): Future<void>
+    + getTotalExpenses(startDate, endDate): Future<double>
+    + getExpensesByCategory(startDate, endDate): Future<Map<int,double>>
+    + getCurrentBudgetCycle(): Future<BudgetCycle?>
+    + createBudgetCycle(cycle: BudgetCycle): Future<void>
+    + updateExpense(expense: Expense): Future<void>
+  }
+
+  class LocalStorageFinanceRepository <<Repository>> {
+    - _categoriesKey: String
+    - _expensesKey: String
+    - _budgetCycleKey: String
+    - _userKey: String
+    - _prefs: Future<SharedPreferences>
+    - _loadCategories(): Future<List<Category>>
+    - _saveCategories(categories): Future<void>
+    - _loadExpenses(): Future<List<Expense>>
+    - _saveExpenses(expenses): Future<void>
+    + addCategory(category: Category): Future<void>
+    + addExpense(expense: Expense): Future<void>
+    + createBudgetCycle(cycle: BudgetCycle): Future<void>
+    + deleteExpense(id: int): Future<void>
+    + getCategories(): Future<List<Category>>
+    + getCurrentBudgetCycle(): Future<BudgetCycle?>
+    + getExpenses(startDate, endDate): Future<List<Expense>>
+    + getExpensesByCategory(startDate, endDate): Future<Map<int,double>>
+    + getTotalExpenses(startDate, endDate): Future<double>
+    + updateExpense(expense: Expense): Future<void>
+    + getActiveCycle(): Future<BudgetCycle?>
+    + saveCycle(cycle: BudgetCycle): Future<void>
+    + getUser(): Future<User?>
+    + saveUser(user: User): Future<void>
+  }
+
+  class DatabaseHelper <<Singleton>> {
+    - DatabaseHelper._internal()
+    + {static} instance: DatabaseHelper
+  }
+}
+
+package "Logic Layer" {
+  interface IFinanceCalculatorService <<Service Interface>> {
+    + calculateSafeDailyLimit(cycle: BudgetCycle, spentToday: List<Expense>): double
+    + calculateRollover(spentToday: double, dailyLimit: double): double
+    + checkThreshold(totalSpent: double, limit: double): bool
+    + calculateCategoryPercentages(expenses: List<Expense>): Map<String,double>
+  }
+
+  class FinanceCalculatorService <<Service>> {
+    + calculateSafeDailyLimit(cycle: BudgetCycle, spentToday: List<Expense>): double
+    + calculateRollover(spentToday: double, dailyLimit: double): double
+    + checkThreshold(totalSpent: double, limit: double): bool
+    + calculateCategoryPercentages(expenses: List<Expense>): Map<String,double>
+  }
+
+  class AuthProvider <<Provider>> {
+    - _repo: IFinanceRepository
+    - _currentUser: User?
+    + currentUser: User?
+    + isAuthenticated: bool
+    + init(): Future<void>
+    + authenticate(pin: String): Future<bool>
+    + setPIN(pin: String): Future<void>
+    + hasSetupPIN(): Future<bool>
+    + logout(): Future<void>
+    + changePIN(oldPIN: String, newPIN: String): Future<bool>
+  }
+
+  class ExpenseProvider <<Provider>> {
+    - _repo: IFinanceRepository
+    - _expenses: List<Expense>
+    - _isLoading: bool
+    - _currentPage: int
+    - _pageSize: int
+    + expenses: List<Expense>
+    + isLoading: bool
+    + currentPage: int
+    + init(): Future<void>
+    + loadMore(): Future<void>
+    + addExpense(expense: Expense): Future<void>
+    + deleteExpense(id: int): Future<void>
+    + setExpenses(expenses: List<Expense>): void
+  }
+
+  class BudgetProvider <<Provider>> {
+    - _repo: IFinanceRepository
+    - _calc: IFinanceCalculatorService
+    - _currentBudgetCycle: BudgetCycle?
+    - _remainingBudget: double
+    + currentBudgetCycle: BudgetCycle?
+    + remainingBudget: double
+    + init(): Future<void>
+    + startNewCycle(amount: double, startDate: DateTime, endDate: DateTime): Future<void>
+    + updateRemainingBudget(amount: double): Future<void>
+    + refresh(): Future<void>
+    + calculateSafeDailyLimit(todayExpenses: List<Expense>): double
+  }
+
+  class FinanceProvider <<Legacy Provider>> {
+    + repo: IFinanceRepository
+    + calculator: FinanceCalculatorService
+    + currentCycle: BudgetCycle?
+    + expenses: List<Expense>
+    + categories: List<Category>
+    + safeDailyLimit: double
+    + isLimitReached: bool
+    + isLoading: bool
+    + totalExpenses: double
+    + expensesByCategory: Map<int,double>
+    + loadInitialData(): Future<void>
+    + createBudgetCycle(totalAllowance: double): Future<void>
+    + addNewExpense(amount: double, note: String, categoryId: int): Future<void>
+    + deleteExpense(id: int): Future<void>
+    + updateUIState(): void
+    + resetData(): Future<void>
+  }
+}
+
+package "Presentation Layer" as PresentationLayer {
+  class SplashScreen <<Screen>> {
+    + createState(): State
+  }
+
+  class AuthScreen <<Screen>> {
+    + createState(): State
+  }
+
+  class SetupCycleScreen <<Screen>> {
+    + createState(): State
+  }
+
+  class DashboardScreen <<Screen>> {
+    + createState(): State
+  }
+
+  class AddExpenseScreen <<Screen>> {
+    + createState(): State
+  }
+
+  class HistoryScreen <<Screen>> {
+    + build(context): Widget
+  }
+
+  class SettingsScreen <<Screen>> {
+    + build(context): Widget
+  }
+
+  class ExpensePieChart <<Widget>> {
+    + expensesByCategory: Map<int,double>
+    + categories: List<Category>
+    + build(context): Widget
+    - _getCategoryColor(categoryId: int): Color
+  }
+
+  class SafeLimitCard <<Widget>> {
+    + totalExpenses: double
+    + monthlyBudget: double
+    + safeLimit: double
+    + build(context): Widget
+    - _resolvePalette(isOverSafe: bool, isOverBudget: bool): _LimitPalette
+  }
+
+  class _LimitPalette <<Value Object>> {
+    + accent: Color
+    + tint: Color
+    + border: Color
+    + badgeBackground: Color
+    + shadow: Color
+    + icon: IconData
+    + statusText: String
+  }
+}
+
+package "Core" {
+  
+
+  class CurrencyFormatter <<Utility>> {
+    - {static} _formatter: NumberFormat
+    + {static} format(amount: double): String
+    + {static} formatCompact(amount: double): String
+  }
+
+}
+
+' Inheritance
+StatelessWidget <|-- MasrofyApp
+StatelessWidget <|-- HistoryScreen
+StatelessWidget <|-- SettingsScreen
+StatelessWidget <|-- ExpensePieChart
+StatelessWidget <|-- SafeLimitCard
+StatefulWidget <|-- SplashScreen
+StatefulWidget <|-- AuthScreen
+StatefulWidget <|-- SetupCycleScreen
+StatefulWidget <|-- DashboardScreen
+StatefulWidget <|-- AddExpenseScreen
+ChangeNotifier <|-- AuthProvider
+ChangeNotifier <|-- ExpenseProvider
+ChangeNotifier <|-- BudgetProvider
+ChangeNotifier <|-- FinanceProvider
+IFinanceRepository <|.. LocalStorageFinanceRepository
+IFinanceCalculatorService <|.. FinanceCalculatorService
+
+' Model relationships
+User "1" <-- "0..*" Expense : userId
+User "1" <-- "0..*" BudgetCycle : userId
+Category "1" <-- "0..*" Expense : categoryId
+BudgetCycle "1" o-- "0..*" Expense : expenses
+
+' Data dependencies
+LocalStorageFinanceRepository ..> SharedPreferences : persists JSON
+LocalStorageFinanceRepository ..> User
+LocalStorageFinanceRepository ..> Expense
+LocalStorageFinanceRepository ..> Category
+LocalStorageFinanceRepository ..> BudgetCycle
+IFinanceRepository ..> User
+IFinanceRepository ..> Expense
+IFinanceRepository ..> Category
+IFinanceRepository ..> BudgetCycle
+
+' Logic dependencies
+AuthProvider o-- IFinanceRepository : _repo
+AuthProvider o-- User : _currentUser
+ExpenseProvider o-- IFinanceRepository : _repo
+ExpenseProvider o-- "0..*" Expense : _expenses
+BudgetProvider o-- IFinanceRepository : _repo
+BudgetProvider o-- IFinanceCalculatorService : _calc
+BudgetProvider o-- BudgetCycle : _currentBudgetCycle
+BudgetProvider ..> Expense : today expenses
+FinanceProvider o-- IFinanceRepository : repo
+FinanceProvider o-- FinanceCalculatorService : calculator
+FinanceProvider o-- BudgetCycle : currentCycle
+FinanceProvider o-- "0..*" Expense : expenses
+FinanceProvider o-- "0..*" Category : categories
+
+' App composition and presentation dependencies
+MasrofyApp *-- AuthProvider : MultiProvider
+MasrofyApp *-- ExpenseProvider : MultiProvider
+MasrofyApp *-- BudgetProvider : MultiProvider
+MasrofyApp ..> SplashScreen : route "/"
+MasrofyApp ..> AuthScreen : route "/auth"
+MasrofyApp ..> SetupCycleScreen : route "/setup"
+MasrofyApp ..> DashboardScreen : route "/dashboard"
+MasrofyApp ..> AddExpenseScreen : route "/add-expense"
+MasrofyApp ..> HistoryScreen : route "/history"
+MasrofyApp ..> SettingsScreen : route "/settings"
+
+SplashScreen ..> AuthProvider : checks setup
+AuthScreen ..> AuthProvider : authenticate
+SetupCycleScreen ..> AuthProvider : set PIN
+SetupCycleScreen ..> BudgetProvider : start cycle
+DashboardScreen ..> BudgetProvider : reads budget
+DashboardScreen ..> ExpenseProvider : reads expenses
+DashboardScreen ..> SafeLimitCard
+DashboardScreen ..> ExpensePieChart
+AddExpenseScreen ..> ExpenseProvider : add expense
+AddExpenseScreen ..> BudgetProvider : update balance
+HistoryScreen ..> ExpenseProvider : list/delete
+SettingsScreen ..> AuthProvider : change/logout
+SettingsScreen ..> BudgetProvider : refresh
+SettingsScreen ..> ExpenseProvider : refresh
+ExpensePieChart o-- "0..*" Category : categories
+ExpensePieChart ..> CurrencyFormatter
+SafeLimitCard ..> CurrencyFormatter
+SafeLimitCard o-- _LimitPalette : resolved palette
+
+note right of DatabaseHelper
+  Singleton placeholder in the current codebase.
+  The active repository stores data through SharedPreferences.
+end note
+
+note bottom of FinanceProvider
+  FinanceProvider exists beside the newer focused providers
+  AuthProvider, ExpenseProvider, and BudgetProvider.
+end note
+
+note bottom of PresentationLayer
+  Private visual helper widgets inside screen files are omitted
+  to keep the diagram focused on project-level relationships.
+end note
+
+@enduml

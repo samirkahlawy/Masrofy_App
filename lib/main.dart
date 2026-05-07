@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'logic/finance_provider.dart';
-import 'presentation/screens/splash_screen.dart';
-import 'presentation/screens/dashboard_screen.dart';
 
-void main() {
+import 'logic/auth_provider.dart';
+import 'logic/expense_provider.dart';
+import 'logic/budget_provider.dart';
+import 'presentation/screens/add_expense_screen.dart';
+import 'presentation/screens/auth_screeen.dart';
+import 'presentation/screens/dashboard_screen.dart';
+import 'presentation/screens/history_screen.dart';
+import 'presentation/screens/settings_screen.dart';
+import 'presentation/screens/setup_cycle_screen.dart';
+import 'presentation/screens/splash_screen.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MasrofyApp());
 }
 
@@ -13,8 +22,12 @@ class MasrofyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => FinanceProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
+        ChangeNotifierProvider(create: (_) => ExpenseProvider()..init()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()..init()),
+      ],
       child: MaterialApp(
         title: 'Masrofy',
         debugShowCheckedModeBanner: false,
@@ -30,10 +43,14 @@ class MasrofyApp extends StatelessWidget {
         initialRoute: '/',
         routes: {
           '/': (context) => const SplashScreen(),
-          '/dashboard': (context) =>  DashboardScreen(),
+          '/auth': (context) => const AuthScreen(),
+          '/setup': (context) => const SetupCycleScreen(),
+          '/dashboard': (context) => const DashboardScreen(),
+          '/add-expense': (context) => const AddExpenseScreen(),
+          '/history': (context) => const HistoryScreen(),
+          '/settings': (context) => const SettingsScreen(),
         },
       ),
     );
   }
 }
-

@@ -1,45 +1,27 @@
 class Category {
   final int? id;
   final String name;
-  final String? icon;
-  final String? color;
-  final int? userId;
+  final String? iconPath;
 
-  Category({this.id, required this.name, this.icon, this.color, this.userId});
+  Category({this.id, required this.name, this.iconPath});
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'icon': icon,
-      'color': color,
-      'user_id': userId,
-    };
+    return {'id': id, 'name': name, 'icon_path': iconPath};
   }
 
   factory Category.fromMap(Map<String, dynamic> map) {
     return Category(
       id: map['id'] as int?,
       name: map['name'] as String,
-      icon: map['icon'] as String?,
-      color: map['color'] as String?,
-      userId: map['user_id'] as int?,
+      iconPath: map['icon_path'] as String?,
     );
   }
 
-  Category copyWith({
-    int? id,
-    String? name,
-    String? icon,
-    String? color,
-    int? userId,
-  }) {
+  Category copyWith({int? id, String? name, String? iconPath}) {
     return Category(
       id: id ?? this.id,
       name: name ?? this.name,
-      icon: icon ?? this.icon,
-      color: color ?? this.color,
-      userId: userId ?? this.userId,
+      iconPath: iconPath ?? this.iconPath,
     );
   }
 }

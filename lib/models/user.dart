@@ -1,51 +1,41 @@
+import 'dart:convert';
+
 class User {
   final int? id;
-  final String name;
-  final String? email;
-  final double monthlyBudget;
-  final DateTime createdAt;
+  final String firstName;
+  final String hashedPIN;
+  final bool isFirstTime;
 
   User({
     this.id,
-    required this.name,
-    this.email,
-    this.monthlyBudget = 0,
-    required this.createdAt,
+    required this.firstName,
+    required this.hashedPIN,
+    this.isFirstTime = true,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'name': name,
-      'email': email,
-      'monthly_budget': monthlyBudget,
-      'created_at': createdAt.toIso8601String(),
+      'first_name': firstName,
+      'hashed_pin': hashedPIN,
+      'is_first_time': isFirstTime ? 1 : 0,
     };
   }
 
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
       id: map['id'] as int?,
-      name: map['name'] as String,
-      email: map['email'] as String?,
-      monthlyBudget: (map['monthly_budget'] as num?)?.toDouble() ?? 0,
-      createdAt: DateTime.parse(map['created_at'] as String),
+      firstName: map['first_name'] as String,
+      hashedPIN: map['hashed_pin'] as String,
+      isFirstTime: (map['is_first_time'] as int?) == 1,
     );
   }
 
-  User copyWith({
-    int? id,
-    String? name,
-    String? email,
-    double? monthlyBudget,
-    DateTime? createdAt,
-  }) {
-    return User(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      monthlyBudget: monthlyBudget ?? this.monthlyBudget,
-      createdAt: createdAt ?? this.createdAt,
-    );
+  bool verifyPIN(String rawPIN) {
+    return hashPIN(rawPIN) == hashedPIN;
+  }
+
+  static String hashPIN(String rawPIN) {
+    return base64Url.encode(utf8.encode(rawPIN));
   }
 }
