@@ -7,9 +7,11 @@ import '../../logic/budget_provider.dart';
 import '../../logic/expense_provider.dart';
 import '../../logic/auth_provider.dart';
 
+/// A screen for managing application settings, including PIN changes and data resets.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
+  /// Displays a dialog to allow the user to change their access PIN.
   Future<void> _showChangePINDialog(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final oldPinController = TextEditingController();
@@ -151,7 +153,8 @@ class SettingsScreen extends StatelessWidget {
                                     if (!dialogContext.mounted) return;
 
                                     if (success) {
-                                      Navigator.of(dialogContext).pop();
+                                      // Navigator.of(dialogContext).pop();
+                                      
                                       ScaffoldMessenger.of(
                                         dialogContext,
                                       ).showSnackBar(
@@ -159,6 +162,7 @@ class SettingsScreen extends StatelessWidget {
                                           content: Text('تم تغيير الرمز بنجاح'),
                                         ),
                                       );
+                                      Navigator.of(dialogContext, rootNavigator: true).pop();
                                     } else {
                                       setState(() {
                                         errorMessage = 'الرمز القديم غير صحيح';

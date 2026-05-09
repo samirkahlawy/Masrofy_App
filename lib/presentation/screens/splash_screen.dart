@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import '../../logic/auth_provider.dart';
 
+/// The initial loading screen with animations that handles routing based on auth state.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -29,6 +30,7 @@ class _SplashScreenState extends State<SplashScreen>
     _handleNavigation();
   }
 
+  /// Configures the complex sequence of fade, scale, and rotation animations.
   void _setupAnimations() {
     _mainController = AnimationController(
       vsync: this,
@@ -74,6 +76,7 @@ class _SplashScreenState extends State<SplashScreen>
     _mainController.forward();
   }
 
+  /// Determines whether to send the user to setup, auth, or the dashboard.
   Future<void> _handleNavigation() async {
     // 1. استنى شوية عشان الأنيميشن والبراندينج (UX)
     await Future.delayed(const Duration(seconds: 3));

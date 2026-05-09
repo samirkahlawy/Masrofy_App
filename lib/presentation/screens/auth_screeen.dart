@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../logic/auth_provider.dart';
 
+/// The authentication screen where users enter their PIN to access the app.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -21,6 +22,7 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
+  /// Attempts to authenticate the user with the provided PIN.
   Future<void> _onLogin() async {
     final pin = _pinController.text.trim();
     if (pin.isEmpty || pin.length < 4) {

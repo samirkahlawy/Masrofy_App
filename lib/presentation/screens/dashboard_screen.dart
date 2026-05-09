@@ -9,6 +9,7 @@ import '../../models/expense.dart';
 import '../widgets/expense_pie_chart.dart';
 import '../widgets/safe_limit_card.dart';
 
+/// The primary dashboard screen showing budget overview and recent expenses.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -651,7 +652,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               size: 26,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 14), 
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,7 +684,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 5), // SizeBox should be 5 not 12 to fix Over Flow 
           Text(
             CurrencyFormatter.format(expense.amount),
             style: theme.textTheme.titleMedium?.copyWith(

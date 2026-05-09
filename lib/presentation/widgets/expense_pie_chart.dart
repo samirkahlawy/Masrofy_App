@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../models/category.dart';
 
+/// A widget that displays a pie chart representing expenses grouped by category.
 class ExpensePieChart extends StatelessWidget {
+  /// A map where keys are category IDs and values are the total expenses for that category.
   final Map<int, double> expensesByCategory;
+
+  /// The list of available [Category] objects to map IDs to names.
   final List<Category> categories;
 
+  /// Creates an [ExpensePieChart].
   const ExpensePieChart({
     super.key,
     required this.expensesByCategory,
@@ -218,6 +223,7 @@ class ExpensePieChart extends StatelessWidget {
     );
   }
 
+  /// Generates a consistent color for a given category ID.
   Color _getCategoryColor(int categoryId) {
     const colors = [
       Color(0xFF1F8A70),

@@ -5,6 +5,9 @@ import '../../logic/expense_provider.dart';
 import '../../logic/budget_provider.dart';
 import '../../models/expense.dart';
 
+/// A screen that allows users to record a new expense.
+/// 
+/// It provides input fields for the amount, note, and category selection.
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
 
@@ -19,7 +22,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   bool _isSaving = false;
   String? _errorMessage;
 
-  // Mock categories - in a real app these would come from a categories provider
+  /// Mock categories - in a real app these would come from a categories provider
   final List<Map<String, dynamic>> _mockCategories = [
     {
       'id': 1,
@@ -53,6 +56,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     },
   ];
 
+  /// Validates input and saves the expense to the repository.
   Future<void> _onSave() async {
     final amount =
         double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0;

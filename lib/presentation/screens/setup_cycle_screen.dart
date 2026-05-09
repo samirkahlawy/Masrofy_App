@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../logic/auth_provider.dart';
 import '../../logic/budget_provider.dart';
 
+/// The onboarding screen for setting up a new budget cycle and user profile.
 class SetupCycleScreen extends StatefulWidget {
   const SetupCycleScreen({super.key});
 
@@ -23,8 +24,10 @@ class _SetupCycleScreenState extends State<SetupCycleScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  /// Calculates the total number of days in the selected cycle.
   int get _cycleDays => _endDate.difference(_startDate).inDays + 1;
 
+  /// Opens a date picker to select the cycle start date.
   Future<void> _selectStartDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -47,6 +50,7 @@ class _SetupCycleScreenState extends State<SetupCycleScreen> {
     }
   }
 
+  /// Finalizes the setup and navigates to the dashboard.
   Future<void> _selectEndDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,

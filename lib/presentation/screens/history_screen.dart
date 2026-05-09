@@ -6,6 +6,7 @@ import '../../logic/expense_provider.dart';
 import '../../models/category.dart';
 import '../../models/expense.dart';
 
+/// A screen that displays a detailed chronological list of all recorded expenses.
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
@@ -13,6 +14,7 @@ class HistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
 
+    /// Local mock categories for visualization mapping.
     final mockCategories = [
       Category(id: 1, name: 'طعام'),
       Category(id: 2, name: 'مواصلات'),

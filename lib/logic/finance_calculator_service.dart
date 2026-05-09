@@ -2,6 +2,7 @@ import '../models/budget_cycle.dart';
 import '../models/expense.dart';
 import 'i_finance_calculator_service.dart';
 
+/// Implementation of financial logic and calculations.
 class FinanceCalculatorService implements IFinanceCalculatorService {
   @override
   double calculateSafeDailyLimit(BudgetCycle cycle, List<Expense> spentToday) {

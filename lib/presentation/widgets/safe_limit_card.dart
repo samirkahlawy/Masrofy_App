@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../core/utils/currency_formatter.dart';
 
+/// A card widget that displays a "Safe Spend Limit" indicator, 
+/// comparing total expenses against a budget and safe limit.
 class SafeLimitCard extends StatelessWidget {
+  /// The total amount spent so far in the current cycle.
   final double totalExpenses;
+
+  /// The total budget allocated for the month/cycle.
   final double monthlyBudget;
+
+  /// The calculated daily safe limit.
   final double safeLimit;
 
+  /// Creates a [SafeLimitCard].
   const SafeLimitCard({
     super.key,
     required this.totalExpenses,
@@ -187,6 +195,7 @@ class SafeLimitCard extends StatelessWidget {
     );
   }
 
+  /// Determines the visual style (colors, icon, text) based on spending status.
   _LimitPalette _resolvePalette({
     required bool isOverSafe,
     required bool isOverBudget,
@@ -226,7 +235,7 @@ class SafeLimitCard extends StatelessWidget {
     );
   }
 }
-
+/// A private internal helper widget for individual metric labels and values.
 class _LimitMetricCard extends StatelessWidget {
   const _LimitMetricCard({
     required this.label,
@@ -275,6 +284,7 @@ class _LimitMetricCard extends StatelessWidget {
   }
 }
 
+/// A data class containing the color palette and assets for a spending status.
 class _LimitPalette {
   const _LimitPalette({
     required this.accent,
