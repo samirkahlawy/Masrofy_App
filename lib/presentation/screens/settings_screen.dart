@@ -10,182 +10,19 @@ import '../../logic/auth_provider.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  Future<void> _showChangePINDialog(BuildContext context) async {
+  Future<void> _showChangePINDialog(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final oldPinController = TextEditingController();
-    final newPinController = TextEditingController();
-    final confirmPinController = TextEditingController();
-    String? errorMessage;
 
-    try {
-      return await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: StatefulBuilder(
-              builder: (context, setState) {
-                final theme = Theme.of(context);
-
-                return Dialog(
-                  insetPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 24,
-                  ),
-                  backgroundColor: Colors.transparent,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 460),
-                    child: _DialogSurface(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const _DialogIcon(
-                                icon: Icons.lock_reset_rounded,
-                                color: _AppColors.primary,
-                                backgroundColor: _AppColors.primarySoft,
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'تغيير رمز PIN',
-                                      style: theme.textTheme.titleLarge
-                                          ?.copyWith(
-                                            color: _AppColors.ink,
-                                            fontWeight: FontWeight.w900,
-                                            height: 1.2,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 7),
-                                    Text(
-                                      'أدخل الرمز القديم ثم اختر رمزًا جديدًا لحماية حسابك.',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: _AppColors.muted,
-                                            fontWeight: FontWeight.w600,
-                                            height: 1.5,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          _PinField(
-                            controller: oldPinController,
-                            label: 'الرمز القديم',
-                            icon: Icons.key_rounded,
-                          ),
-                          const SizedBox(height: 12),
-                          _PinField(
-                            controller: newPinController,
-                            label: 'الرمز الجديد',
-                            icon: Icons.password_rounded,
-                          ),
-                          const SizedBox(height: 12),
-                          _PinField(
-                            controller: confirmPinController,
-                            label: 'تأكيد الرمز الجديد',
-                            icon: Icons.verified_user_rounded,
-                          ),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 220),
-                            switchInCurve: Curves.easeOutCubic,
-                            switchOutCurve: Curves.easeInCubic,
-                            child: errorMessage == null
-                                ? const SizedBox(height: 22)
-                                : Padding(
-                                    key: ValueKey(errorMessage),
-                                    padding: const EdgeInsets.only(top: 16),
-                                    child: _InlineError(message: errorMessage!),
-                                  ),
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () =>
-                                      Navigator.of(dialogContext).pop(),
-                                  style: _ButtonStyles.secondary,
-                                  child: const Text('إلغاء'),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    final oldPIN = oldPinController.text.trim();
-                                    final newPIN = newPinController.text.trim();
-                                    final confirmPIN = confirmPinController.text
-                                        .trim();
-
-                                    if (oldPIN.length < 4 ||
-                                        newPIN.length < 4 ||
-                                        confirmPIN.length < 4) {
-                                      setState(() {
-                                        errorMessage =
-                                            'يجب إدخال 4 أرقام لكل حقل';
-                                      });
-                                      return;
-                                    }
-
-                                    if (newPIN != confirmPIN) {
-                                      setState(() {
-                                        errorMessage =
-                                            'الرمز الجديد غير متطابق';
-                                      });
-                                      return;
-                                    }
-
-                                    final success = await authProvider
-                                        .changePIN(oldPIN, newPIN);
-
-                                    if (!dialogContext.mounted) return;
-
-                                    if (success) {
-                                      Navigator.of(dialogContext).pop();
-                                      ScaffoldMessenger.of(
-                                        dialogContext,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('تم تغيير الرمز بنجاح'),
-                                        ),
-                                      );
-                                    } else {
-                                      setState(() {
-                                        errorMessage = 'الرمز القديم غير صحيح';
-                                      });
-                                    }
-                                  },
-                                  style: _ButtonStyles.primary,
-                                  child: const Text('حفظ'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      );
-    } finally {
-      oldPinController.dispose();
-      newPinController.dispose();
-      confirmPinController.dispose();
-    }
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: _ChangePINDialog(authProvider: authProvider),
+        );
+      },
+    );
   }
 
   Future<void> _confirmReset(BuildContext context) async {
@@ -552,6 +389,202 @@ class _SecuritySummaryCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ChangePINDialog extends StatefulWidget {
+  const _ChangePINDialog({required this.authProvider});
+
+  final AuthProvider authProvider;
+
+  @override
+  State<_ChangePINDialog> createState() => _ChangePINDialogState();
+}
+
+class _ChangePINDialogState extends State<_ChangePINDialog> {
+  final TextEditingController _oldPinController = TextEditingController();
+  final TextEditingController _newPinController = TextEditingController();
+  final TextEditingController _confirmPinController = TextEditingController();
+
+  String? _errorMessage;
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _oldPinController.dispose();
+    _newPinController.dispose();
+    _confirmPinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final oldPIN = _oldPinController.text.trim();
+    final newPIN = _newPinController.text.trim();
+    final confirmPIN = _confirmPinController.text.trim();
+
+    if (oldPIN.length < 4 || newPIN.length < 4 || confirmPIN.length < 4) {
+      setState(() {
+        _errorMessage = 'يجب إدخال 4 أرقام لكل حقل';
+      });
+      return;
+    }
+
+    if (newPIN != confirmPIN) {
+      setState(() {
+        _errorMessage = 'الرمز الجديد غير متطابق';
+      });
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    final success = await widget.authProvider.changePIN(oldPIN, newPIN);
+
+    if (!mounted) return;
+
+    if (success) {
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('تم تغيير الرمز بنجاح')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = false;
+      _errorMessage = 'الرمز القديم غير صحيح';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: _DialogSurface(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _DialogIcon(
+                      icon: Icons.lock_reset_rounded,
+                      color: _AppColors.primary,
+                      backgroundColor: _AppColors.primarySoft,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'تغيير رمز PIN',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: _AppColors.ink,
+                              fontWeight: FontWeight.w900,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          Text(
+                            'أدخل الرمز القديم ثم اختر رمزًا جديدًا لحماية حسابك.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: _AppColors.muted,
+                              fontWeight: FontWeight.w600,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _PinField(
+                  controller: _oldPinController,
+                  label: 'الرمز القديم',
+                  icon: Icons.key_rounded,
+                ),
+                const SizedBox(height: 12),
+                _PinField(
+                  controller: _newPinController,
+                  label: 'الرمز الجديد',
+                  icon: Icons.password_rounded,
+                ),
+                const SizedBox(height: 12),
+                _PinField(
+                  controller: _confirmPinController,
+                  label: 'تأكيد الرمز الجديد',
+                  icon: Icons.verified_user_rounded,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!_isSaving) {
+                      _save();
+                    }
+                  },
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: _errorMessage == null
+                      ? const SizedBox(height: 22)
+                      : Padding(
+                          key: ValueKey(_errorMessage),
+                          padding: const EdgeInsets.only(top: 16),
+                          child: _InlineError(message: _errorMessage!),
+                        ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isSaving
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        style: _ButtonStyles.secondary,
+                        child: const Text('إلغاء'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _save,
+                        style: _ButtonStyles.primary,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('حفظ'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -935,18 +968,23 @@ class _PinField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.icon,
+    this.textInputAction = TextInputAction.next,
+    this.onSubmitted,
   });
 
   final TextEditingController controller;
   final String label;
   final IconData icon;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      textInputAction: TextInputAction.next,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       obscureText: true,
       maxLength: 4,

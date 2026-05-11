@@ -80,7 +80,7 @@ package "Data Layer" {
     + updateExpense(expense: Expense): Future<void>
   }
 
-  class LocalStorageFinanceRepository <<Repository>> {
+  class SqliteFinanceRepository <<Repository>> {
     - _categoriesKey: String
     - _expensesKey: String
     - _budgetCycleKey: String
@@ -106,7 +106,7 @@ package "Data Layer" {
     + saveUser(user: User): Future<void>
   }
 
-  class DatabaseHelper <<Singleton>> {
+  class DatabaseHelper {
     - DatabaseHelper._internal()
     + {static} instance: DatabaseHelper
   }
@@ -271,7 +271,7 @@ ChangeNotifier <|-- AuthProvider
 ChangeNotifier <|-- ExpenseProvider
 ChangeNotifier <|-- BudgetProvider
 ChangeNotifier <|-- FinanceProvider
-IFinanceRepository <|.. LocalStorageFinanceRepository
+IFinanceRepository <|.. SqliteFinanceRepository
 IFinanceCalculatorService <|.. FinanceCalculatorService
 
 ' Model relationships

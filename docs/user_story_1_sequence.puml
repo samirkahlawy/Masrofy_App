@@ -1,0 +1,156 @@
+@startuml
+title User Story #1 - Set Initial Budget Cycle
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam ParticipantPadding 24
+skinparam BoxPadding 12
+
+actor "College Student" as Student
+
+box "Presentation Layer" #F3FBFA
+  participant "SplashScreen" as Splash
+  participant "SetupCycleScreen" as Setup
+  participant "DashboardScreen" as Dashboard
+  participant "SafeLimitCard" as SafeCard
+end box
+
+box "Logic Layer" #F8F7FF
+  participant "AuthProvider" as AuthProvider
+  participant "BudgetProvider" as BudgetProvider
+  participant "ExpenseProvider" as ExpenseProvider
+  participant "FinanceCalculatorService" as Calculator
+end box
+
+box "Data / Model Layer" #FFF9EA
+  participant "SqliteFinanceRepository" as Repo
+  participant "BudgetCycle" as Cycle
+  database "SharedPreferences\n(Local Storage)" as Storage
+end box
+
+note right of Storage
+  Current Masrofy implementation stores user and
+  budget cycle JSON through SharedPreferences.
+  If the SRS strictly requires SQLite, replace this
+  storage participant with the SQLite implementation.
+end note
+
+== First launch: no setup exists ==
+
+Student -> Splash: Open app
+activate Splash
+
+Splash -> AuthProvider: hasSetupPIN()
+activate AuthProvider
+AuthProvider -> Repo: getUser()
+activate Repo
+Repo -> Storage: getString("user")
+activate Storage
+Storage --> Repo: null
+deactivate Storage
+Repo --> AuthProvider: null
+deactivate Repo
+AuthProvider --> Splash: false
+deactivate AuthProvider
+
+Splash -> Setup: Navigator.pushReplacementNamed("/setup")
+deactivate Splash
+activate Setup
+
+== Student enters initial cycle details ==
+
+Student -> Setup: Enter total allowance\nexample: 3000 EGP
+Student -> Setup: Select start date\nexample: today
+Setup -> Setup: showDatePicker()
+Student -> Setup: Select end date\nexample: 30 days from now
+Setup -> Setup: showDatePicker()
+
+== Validation and persistence ==
+
+Student -> Setup: Tap confirm setup
+Setup -> Setup: Parse amount and validate amount > 0
+
+alt Invalid amount
+  Setup --> Student: Show validation error
+else Valid amount
+  Setup -> Storage: setBool("isFirstTime", false)
+  activate Storage
+  Storage --> Setup: saved
+  deactivate Storage
+
+  Setup -> AuthProvider: setPIN("1234")
+  activate AuthProvider
+  AuthProvider -> Repo: saveUser(User(id: 1,\nhashedPIN, isFirstTime: false))
+  activate Repo
+  Repo -> Storage: setString("user", userJson)
+  activate Storage
+  Storage --> Repo: saved
+  deactivate Storage
+  Repo --> AuthProvider: done
+  deactivate Repo
+  AuthProvider --> Setup: PIN configured
+  deactivate AuthProvider
+
+  Setup -> BudgetProvider: startNewCycle(amount, startDate, endDate)
+  activate BudgetProvider
+  create Cycle
+  BudgetProvider -> Cycle: BudgetCycle(userId: 1,\ntotalAllowance: amount,\nremainingBalance: amount,\nstartDate, endDate)
+  BudgetProvider -> Repo: saveCycle(cycle)
+  activate Repo
+  Repo -> Storage: setString("budget_cycle", cycleJson)
+  activate Storage
+  Storage --> Repo: saved
+  deactivate Storage
+  Repo --> BudgetProvider: done
+  deactivate Repo
+  BudgetProvider -> BudgetProvider: _currentBudgetCycle = cycle\n_remainingBudget = amount\nnotifyListeners()
+  BudgetProvider --> Setup: cycle created
+  deactivate BudgetProvider
+
+  Setup -> Dashboard: Navigator.pushReplacementNamed("/dashboard")
+  deactivate Setup
+  activate Dashboard
+end
+
+== Dashboard calculates and displays safe daily limit ==
+
+Dashboard -> BudgetProvider: currentBudgetCycle
+activate BudgetProvider
+BudgetProvider --> Dashboard: cycle
+deactivate BudgetProvider
+
+Dashboard -> Cycle: calculateDailyLimit()
+activate Cycle
+Cycle --> Dashboard: totalAllowance / cycleDays
+deactivate Cycle
+
+Dashboard -> ExpenseProvider: expenses
+activate ExpenseProvider
+ExpenseProvider --> Dashboard: expense list
+deactivate ExpenseProvider
+
+Dashboard -> Dashboard: Filter today's expenses
+
+Dashboard -> BudgetProvider: calculateSafeDailyLimit(todayExpenses)
+activate BudgetProvider
+BudgetProvider -> Calculator: calculateSafeDailyLimit(cycle, todayExpenses)
+activate Calculator
+Calculator -> Cycle: calculateDailyLimit()
+activate Cycle
+Cycle --> Calculator: dailyLimit
+deactivate Cycle
+Calculator -> Calculator: todayTotal = sum(todayExpenses)\nsafeLimit = dailyLimit - todayTotal
+Calculator --> BudgetProvider: safeLimit
+deactivate Calculator
+BudgetProvider --> Dashboard: safeLimit
+deactivate BudgetProvider
+
+Dashboard -> SafeCard: SafeLimitCard(totalExpenses,\nmonthlyBudget, safeLimit)
+activate SafeCard
+SafeCard --> Student: Display Safe Daily Limit
+deactivate SafeCard
+deactivate Dashboard
+
+@enduml

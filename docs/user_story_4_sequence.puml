@@ -1,0 +1,121 @@
+@startuml
+title User Story #4 - Visual Spending Insights
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam ParticipantPadding 24
+skinparam BoxPadding 12
+
+actor "College Student" as Student
+
+box "Presentation Layer" #F3FBFA
+  participant "DashboardScreen" as Dashboard
+  participant "ExpensePieChart" as PieChart
+end box
+
+box "Logic Layer" #F8F7FF
+  participant "ExpenseProvider" as ExpenseProvider
+  participant "BudgetProvider" as BudgetProvider
+end box
+
+box "Data / Model Layer" #FFF9EA
+  participant "SqliteFinanceRepository" as Repo
+  participant "BudgetCycle" as Cycle
+  database "SharedPreferences\n(Local Storage)" as Storage
+end box
+
+note right of Storage
+  Current Masrofy implementation persists
+  expenses and budget cycle JSON through
+  SharedPreferences, not SQLite.
+end note
+
+note over Dashboard
+  Current dashboard code builds category totals
+  directly from ExpenseProvider.expenses.
+  It does not call getExpensesByCategory()
+  during rendering.
+end note
+
+== Open dashboard ==
+
+Student -> Dashboard: Open Dashboard screen
+activate Dashboard
+
+Dashboard -> BudgetProvider: currentBudgetCycle
+activate BudgetProvider
+BudgetProvider --> Dashboard: active cycle
+deactivate BudgetProvider
+
+Dashboard -> ExpenseProvider: expenses
+activate ExpenseProvider
+ExpenseProvider --> Dashboard: cached expense list
+deactivate ExpenseProvider
+
+== If provider data needs refresh ==
+
+Dashboard -> ExpenseProvider: init()
+activate ExpenseProvider
+ExpenseProvider -> Repo: getExpenses()
+activate Repo
+Repo -> Storage: getString("expenses")
+activate Storage
+Storage --> Repo: expense list JSON
+deactivate Storage
+Repo -> Repo: decode and sort by date desc
+Repo --> ExpenseProvider: expenses
+deactivate Repo
+ExpenseProvider -> ExpenseProvider: _expenses updated\nnotifyListeners()
+ExpenseProvider --> Dashboard: updated expense list
+deactivate ExpenseProvider
+
+== Build visual spending breakdown ==
+
+Dashboard -> Dashboard: create mockCategories list
+Dashboard -> Dashboard: expensesByCategory = {}
+
+alt There is at least one logged expense
+  loop for each expense in expenseProvider.expenses
+    Dashboard -> Dashboard: add expense.amount to\nexpensesByCategory[categoryId]
+  end
+
+  Dashboard -> PieChart: ExpensePieChart(expensesByCategory, categories)
+  activate PieChart
+  PieChart -> PieChart: sort category totals desc
+  PieChart -> PieChart: total = sum(all category totals)
+  loop for each category entry
+    PieChart -> PieChart: percentage = (category total / total) * 100
+    PieChart -> PieChart: build pie section and legend row
+  end
+  PieChart --> Student: Render pie chart with category shares
+  deactivate PieChart
+else No expenses logged
+  Dashboard -> PieChart: ExpensePieChart({}, categories)
+  activate PieChart
+  PieChart --> Student: Show placeholder message\nand empty-state illustration
+  deactivate PieChart
+end
+
+== Result on dashboard ==
+
+Dashboard --> Student: Visual breakdown of spending by category
+deactivate Dashboard
+
+note over PieChart
+  Current empty-state text in the app is:
+  "لا توجد بيانات كافية لعرض الرسم"
+  with supporting guidance to add expenses.
+end note
+
+note over Dashboard
+  The SRS says the system queries SQLite
+  for current-cycle transactions.
+
+  The current app instead reads expenses from
+  local storage through ExpenseProvider, then
+  aggregates them in DashboardScreen.
+end note
+
+@enduml

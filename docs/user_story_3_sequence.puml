@@ -1,0 +1,173 @@
+@startuml
+title User Story #3 - Dynamic Daily Limit View
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam ParticipantPadding 24
+skinparam BoxPadding 12
+
+actor "College Student" as Student
+
+box "Application / Presentation" #F3FBFA
+  participant "MasrofyApp" as App
+  participant "DashboardScreen" as Dashboard
+  participant "SafeLimitCard" as SafeCard
+  participant "ExpensePieChart" as PieChart
+end box
+
+box "Logic Layer" #F8F7FF
+  participant "BudgetProvider" as BudgetProvider
+  participant "ExpenseProvider" as ExpenseProvider
+  participant "FinanceCalculatorService" as Calculator
+end box
+
+box "Data / Model Layer" #FFF9EA
+  participant "SqliteFinanceRepository" as Repo
+  participant "BudgetCycle" as Cycle
+  database "SharedPreferences\n(Local Storage)" as Storage
+end box
+
+note right of Storage
+  Current Masrofy implementation stores
+  budget cycle and expenses as JSON in
+  SharedPreferences, not SQLite.
+end note
+
+note over Student, Dashboard
+  Precondition:
+  An active budget cycle has already been created.
+end note
+
+== App startup and provider loading ==
+
+Student -> App: Open application
+activate App
+
+App -> ExpenseProvider: init()
+activate ExpenseProvider
+ExpenseProvider -> Repo: getExpenses()
+activate Repo
+Repo -> Storage: getString("expenses")
+activate Storage
+Storage --> Repo: expense list JSON
+deactivate Storage
+Repo -> Repo: decode and sort by date desc
+Repo --> ExpenseProvider: expenses
+deactivate Repo
+ExpenseProvider -> ExpenseProvider: _expenses updated\nnotifyListeners()
+deactivate ExpenseProvider
+
+App -> BudgetProvider: init()
+activate BudgetProvider
+BudgetProvider -> Repo: getActiveCycle()
+activate Repo
+Repo -> Storage: getString("budget_cycle")
+activate Storage
+Storage --> Repo: cycle JSON
+deactivate Storage
+Repo -> Cycle: fromMap(cycleJson)
+activate Cycle
+Cycle --> Repo: cycle
+deactivate Cycle
+Repo --> BudgetProvider: active cycle
+deactivate Repo
+
+BudgetProvider -> Repo: getExpenses(startDate, endDate)
+activate Repo
+Repo -> Storage: getString("expenses")
+activate Storage
+Storage --> Repo: expense list JSON
+deactivate Storage
+Repo -> Repo: filter by cycle dates
+Repo --> BudgetProvider: cycle expenses
+deactivate Repo
+BudgetProvider -> BudgetProvider: remainingBudget = totalAllowance - totalSpent\nnotifyListeners()
+deactivate BudgetProvider
+
+App -> Dashboard: Open dashboard route
+deactivate App
+activate Dashboard
+
+== Dashboard computes live finance view ==
+
+Dashboard -> BudgetProvider: currentBudgetCycle
+activate BudgetProvider
+BudgetProvider --> Dashboard: cycle
+deactivate BudgetProvider
+
+Dashboard -> ExpenseProvider: expenses
+activate ExpenseProvider
+ExpenseProvider --> Dashboard: updated expense list
+deactivate ExpenseProvider
+
+Dashboard -> Cycle: calculateDailyLimit()
+activate Cycle
+Cycle -> Cycle: totalDays = endDate - startDate + 1
+Cycle --> Dashboard: dailyLimit = totalAllowance / totalDays
+deactivate Cycle
+
+Dashboard -> Dashboard: totalExpenses = sum(expenses)\nexpensesByCategory = group by category\ntodayExpenses = filter(today)
+
+alt There are expenses today
+  Dashboard -> BudgetProvider: calculateSafeDailyLimit(todayExpenses)
+  activate BudgetProvider
+  BudgetProvider -> Calculator: calculateSafeDailyLimit(cycle, todayExpenses)
+  activate Calculator
+  Calculator -> Cycle: calculateDailyLimit()
+  activate Cycle
+  Cycle --> Calculator: dailyLimit
+  deactivate Cycle
+  Calculator -> Calculator: todayTotal = sum(todayExpenses)\nsafeLimit = dailyLimit - todayTotal
+  Calculator --> BudgetProvider: safeLimit
+  deactivate Calculator
+  BudgetProvider --> Dashboard: safeLimit
+  deactivate BudgetProvider
+else No spending today
+  Dashboard -> BudgetProvider: calculateSafeDailyLimit([])
+  activate BudgetProvider
+  BudgetProvider -> Calculator: calculateSafeDailyLimit(cycle, [])
+  activate Calculator
+  Calculator -> Cycle: calculateDailyLimit()
+  activate Cycle
+  Cycle --> Calculator: dailyLimit
+  deactivate Cycle
+  Calculator -> Calculator: todayTotal = 0\nsafeLimit = dailyLimit
+  Calculator --> BudgetProvider: safeLimit
+  deactivate Calculator
+  BudgetProvider --> Dashboard: safeLimit
+  deactivate BudgetProvider
+end
+
+== Dashboard renders the values ==
+
+Dashboard -> SafeCard: SafeLimitCard(totalExpenses,\nmonthlyBudget, safeLimit)
+activate SafeCard
+SafeCard --> Student: Show updated safe daily limit
+deactivate SafeCard
+
+Dashboard -> PieChart: ExpensePieChart(expensesByCategory, categories)
+activate PieChart
+PieChart --> Student: Show category totals chart
+deactivate PieChart
+
+Dashboard --> Student: Show daily limit, remaining budget,\nand today's spending on dashboard
+deactivate Dashboard
+
+note over Dashboard
+  Current code shows the daily limit and safe limit,
+  but does not implement the SRS final-day warning badge.
+end note
+
+note over Calculator
+  Current code computes:
+  safeLimit = cycle dailyLimit - today's expenses
+
+  The SRS text says:
+  remaining balance / remaining days
+
+  This diagram follows the actual app behavior.
+end note
+
+@enduml

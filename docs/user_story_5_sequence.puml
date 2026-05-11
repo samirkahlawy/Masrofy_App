@@ -1,0 +1,200 @@
+@startuml
+title User Story #5 - Daily Rollover Management
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam ParticipantPadding 24
+skinparam BoxPadding 12
+
+actor "College Student" as Student
+
+box "Presentation Layer" #F3FBFA
+  participant "DashboardScreen" as Dashboard
+  participant "AddExpenseScreen" as AddExpense
+  participant "SafeLimitCard" as SafeLimitCard
+end box
+
+box "Logic Layer" #F8F7FF
+  participant "ExpenseProvider" as ExpenseProvider
+  participant "BudgetProvider" as BudgetProvider
+  participant "FinanceCalculatorService" as Calculator
+end box
+
+box "Data / Model Layer" #FFF9EA
+  participant "SqliteFinanceRepository" as Repo
+  participant "BudgetCycle" as Cycle
+  participant "Expense" as Expense
+  database "SharedPreferences\n(Local Storage)" as Storage
+end box
+
+note right of Storage
+  Masrofy currently stores the active budget
+  cycle and expenses as JSON in SharedPreferences.
+  The repository name says SQLite, but the active
+  implementation is local key-value storage.
+end note
+
+note over Calculator
+  Daily rollover rule:
+  - Spend less than today's limit -> leftover is
+    added back to the future spending capacity.
+  - Spend more than today's limit -> the future
+    safe daily limit becomes lower.
+end note
+
+== Load current budget state ==
+
+Student -> Dashboard: Open dashboard
+activate Dashboard
+
+Dashboard -> BudgetProvider: currentBudgetCycle
+activate BudgetProvider
+BudgetProvider -> Repo: getActiveCycle()
+activate Repo
+Repo -> Storage: getString("budget_cycle")
+activate Storage
+Storage --> Repo: budget cycle JSON
+deactivate Storage
+Repo -> Cycle: fromMap(decodedJson)
+activate Cycle
+Cycle --> Repo: active BudgetCycle
+deactivate Cycle
+Repo --> BudgetProvider: active cycle
+deactivate Repo
+BudgetProvider --> Dashboard: current cycle
+deactivate BudgetProvider
+
+Dashboard -> ExpenseProvider: expenses
+activate ExpenseProvider
+ExpenseProvider -> Repo: getExpenses()
+activate Repo
+Repo -> Storage: getString("expenses")
+activate Storage
+Storage --> Repo: expense list JSON
+deactivate Storage
+Repo -> Expense: fromMap(each item)
+activate Expense
+Expense --> Repo: Expense objects
+deactivate Expense
+Repo --> ExpenseProvider: sorted expenses
+deactivate Repo
+ExpenseProvider --> Dashboard: cached expenses
+deactivate ExpenseProvider
+
+Dashboard -> Dashboard: Filter expenses for current cycle
+Dashboard -> Dashboard: Calculate totalSpent and todaySpent
+
+== Calculate rollover-aware safe daily limit ==
+
+Dashboard -> BudgetProvider: calculateSafeDailyLimit(todayExpenses)
+activate BudgetProvider
+BudgetProvider -> Calculator: calculateSafeDailyLimit(cycle, todayExpenses)
+activate Calculator
+Calculator -> Cycle: calculateDailyLimit()
+activate Cycle
+Cycle --> Calculator: baseDailyLimit
+deactivate Cycle
+Calculator -> Calculator: todaySpent = sum(todayExpenses)
+Calculator -> Calculator: dayDifference = baseDailyLimit - todaySpent
+
+alt Student spent less than today's limit
+  Calculator -> Calculator: rollover = calculateRollover(todaySpent,\nbaseDailyLimit)
+  Calculator -> Calculator: futureDailyLimit increases\nby distributing rollover\nacross remaining days
+  Calculator --> BudgetProvider: increased safeDailyLimit
+else Student spent more than today's limit
+  Calculator -> Calculator: overspent = todaySpent - baseDailyLimit
+  Calculator -> Calculator: futureDailyLimit decreases\nby distributing overspent\nacross remaining days
+  Calculator --> BudgetProvider: reduced safeDailyLimit
+else Student spent exactly today's limit
+  Calculator --> BudgetProvider: unchanged safeDailyLimit
+end
+
+deactivate Calculator
+BudgetProvider --> Dashboard: safeDailyLimit
+deactivate BudgetProvider
+
+Dashboard -> SafeLimitCard: SafeLimitCard(totalExpenses,\nmonthlyBudget, safeLimit)
+activate SafeLimitCard
+SafeLimitCard -> SafeLimitCard: Compare totalExpenses with safeLimit
+SafeLimitCard --> Student: Show safe/near-limit/over-budget status
+deactivate SafeLimitCard
+
+== Add a new expense and recalculate ==
+
+Student -> AddExpense: Enter amount, note, category\nthen tap save
+activate AddExpense
+AddExpense -> Expense: Expense(amount, note,\nDateTime.now(), categoryId, userId)
+activate Expense
+Expense --> AddExpense: new Expense object
+deactivate Expense
+
+AddExpense -> ExpenseProvider: addExpense(expense)
+activate ExpenseProvider
+ExpenseProvider -> Repo: addExpense(expense)
+activate Repo
+Repo -> Storage: getString("expenses")
+activate Storage
+Storage --> Repo: old expense list JSON
+Repo -> Repo: assign next id and append expense
+Repo -> Storage: setString("expenses", updatedJson)
+Storage --> Repo: saved
+deactivate Storage
+Repo --> ExpenseProvider: done
+deactivate Repo
+
+ExpenseProvider -> Repo: getExpenses()
+activate Repo
+Repo -> Storage: getString("expenses")
+activate Storage
+Storage --> Repo: updated expense list JSON
+deactivate Storage
+Repo --> ExpenseProvider: updated expenses
+deactivate Repo
+ExpenseProvider -> ExpenseProvider: notifyListeners()
+ExpenseProvider --> AddExpense: expense saved
+deactivate ExpenseProvider
+
+AddExpense -> BudgetProvider: updateRemainingBudget(current - amount)
+activate BudgetProvider
+BudgetProvider -> BudgetProvider: update in-memory remaining budget
+BudgetProvider -> BudgetProvider: notifyListeners()
+BudgetProvider --> AddExpense: updated
+deactivate BudgetProvider
+
+AddExpense --> Student: Return to dashboard
+deactivate AddExpense
+
+Dashboard -> Dashboard: Rebuild after provider notification
+Dashboard -> BudgetProvider: calculateSafeDailyLimit(todayExpenses)
+activate BudgetProvider
+BudgetProvider -> Calculator: Recalculate rollover result
+activate Calculator
+
+alt New total is below today's base limit
+  Calculator --> BudgetProvider: leftover is rolled forward
+else New total is above today's base limit
+  Calculator --> BudgetProvider: future safe limit is reduced
+end
+
+deactivate Calculator
+BudgetProvider --> Dashboard: updated safeDailyLimit
+deactivate BudgetProvider
+
+Dashboard -> SafeLimitCard: Re-render with updated limit
+activate SafeLimitCard
+SafeLimitCard --> Student: Updated daily control feedback
+deactivate SafeLimitCard
+
+deactivate Dashboard
+
+note over BudgetProvider, Calculator
+  Implementation checkpoint:
+  The app already has calculateRollover(spentToday, dailyLimit).
+  To fully satisfy this story, the safe-limit calculation should
+  distribute saving or overspending over the remaining days
+  whenever expenses are saved or the dashboard refreshes.
+end note
+
+@enduml

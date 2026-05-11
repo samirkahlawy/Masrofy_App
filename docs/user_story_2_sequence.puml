@@ -1,0 +1,163 @@
+@startuml
+title User Story #2 - Rapid Expense Logging
+
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam ParticipantPadding 24
+skinparam BoxPadding 12
+
+actor "College Student" as Student
+
+box "Presentation Layer" #F3FBFA
+  participant "DashboardScreen" as Dashboard
+  participant "AddExpenseScreen" as AddExpense
+  participant "SafeLimitCard" as SafeCard
+  participant "ExpensePieChart" as PieChart
+end box
+
+box "Logic Layer" #F8F7FF
+  participant "ExpenseProvider" as ExpenseProvider
+  participant "BudgetProvider" as BudgetProvider
+  participant "FinanceCalculatorService" as Calculator
+end box
+
+box "Data / Model Layer" #FFF9EA
+  participant "SqliteFinanceRepository" as Repo
+  participant "Expense" as Expense
+  participant "BudgetCycle" as Cycle
+  database "SharedPreferences\n(Local Storage)" as Storage
+end box
+
+note right of Storage
+  Current Masrofy code persists expenses and budget
+  cycle JSON using SharedPreferences.
+  The class name says SqliteFinanceRepository,
+  but the active implementation is local storage,
+  not SQLite.
+end note
+
+note over Dashboard, AddExpense
+  Precondition:
+  An active budget cycle already exists
+  and the user is inside the app.
+end note
+
+== Open quick entry ==
+
+Student -> Dashboard: Tap "إضافة مصروف"
+activate Dashboard
+Dashboard -> AddExpense: Navigator.pushNamed("/add-expense")
+deactivate Dashboard
+activate AddExpense
+
+== Enter expense details ==
+
+Student -> AddExpense: Enter amount
+Student -> AddExpense: Optional note
+Student -> AddExpense: Select one category icon
+Student -> AddExpense: Tap save
+
+AddExpense -> AddExpense: Parse amount\nand trim note
+
+alt Invalid amount
+  AddExpense --> Student: Show error message
+else No category selected
+  AddExpense --> Student: Show error message
+else Valid input
+  AddExpense -> AddExpense: _isSaving = true
+  create Expense
+  AddExpense -> Expense: Expense(amount, note,\ndate: DateTime.now(),\ncategoryId, userId: 1)
+
+  AddExpense -> ExpenseProvider: addExpense(expense)
+  activate ExpenseProvider
+  ExpenseProvider -> Repo: addExpense(expense)
+  activate Repo
+  Repo -> Storage: getString("expenses")
+  activate Storage
+  Storage --> Repo: existing expense list
+  Repo -> Repo: assign next id\nappend expense
+  Repo -> Storage: setString("expenses", expensesJson)
+  Storage --> Repo: saved
+  deactivate Storage
+  Repo --> ExpenseProvider: done
+  deactivate Repo
+
+  ExpenseProvider -> ExpenseProvider: init()
+  ExpenseProvider -> Repo: getExpenses()
+  activate Repo
+  Repo -> Storage: getString("expenses")
+  activate Storage
+  Storage --> Repo: updated expense list
+  deactivate Storage
+  Repo -> Repo: decode and sort by date desc
+  Repo --> ExpenseProvider: expenses
+  deactivate Repo
+  ExpenseProvider -> ExpenseProvider: _expenses updated\nnotifyListeners()
+  ExpenseProvider --> AddExpense: done
+  deactivate ExpenseProvider
+
+  AddExpense -> BudgetProvider: updateRemainingBudget(\nremainingBudget - amount)
+  activate BudgetProvider
+  BudgetProvider -> BudgetProvider: _remainingBudget updated\nnotifyListeners()
+  BudgetProvider --> AddExpense: done
+  deactivate BudgetProvider
+
+  AddExpense -> Dashboard: Navigator.pop()
+  deactivate AddExpense
+  activate Dashboard
+end
+
+== Dashboard refreshes visible finance state ==
+
+Dashboard -> BudgetProvider: currentBudgetCycle
+activate BudgetProvider
+BudgetProvider --> Dashboard: cycle
+deactivate BudgetProvider
+
+Dashboard -> ExpenseProvider: expenses
+activate ExpenseProvider
+ExpenseProvider --> Dashboard: updated expense list
+deactivate ExpenseProvider
+
+Dashboard -> Dashboard: totalExpenses = sum(expenses)\ntodayExpenses = filter(today)\nexpensesByCategory = group by category
+
+Dashboard -> Cycle: calculateDailyLimit()
+activate Cycle
+Cycle --> Dashboard: dailyLimit
+deactivate Cycle
+
+Dashboard -> BudgetProvider: calculateSafeDailyLimit(todayExpenses)
+activate BudgetProvider
+BudgetProvider -> Calculator: calculateSafeDailyLimit(cycle, todayExpenses)
+activate Calculator
+Calculator -> Cycle: calculateDailyLimit()
+activate Cycle
+Cycle --> Calculator: dailyLimit
+deactivate Cycle
+Calculator -> Calculator: safeLimit = dailyLimit - sum(todayExpenses)
+Calculator --> BudgetProvider: safeLimit
+deactivate Calculator
+BudgetProvider --> Dashboard: safeLimit
+deactivate BudgetProvider
+
+Dashboard -> SafeCard: rebuild with totalExpenses,\nmonthlyBudget, safeLimit
+activate SafeCard
+SafeCard --> Student: Updated safe daily limit
+deactivate SafeCard
+
+Dashboard -> PieChart: rebuild with expensesByCategory
+activate PieChart
+PieChart --> Student: Updated dashboard chart
+deactivate PieChart
+
+note over Dashboard
+  Current implementation returns to the dashboard
+  after saving, but does not show an explicit
+  "Saved" confirmation message.
+end note
+
+deactivate Dashboard
+
+@enduml
