@@ -2,7 +2,9 @@ import '../models/budget_cycle.dart';
 import '../models/expense.dart';
 import 'i_finance_calculator_service.dart';
 
+/// Implementation of financial logic and calculations.
 class FinanceCalculatorService implements IFinanceCalculatorService {
+  
   @override
   double calculateSafeDailyLimit(BudgetCycle cycle, List<Expense> spentToday) {
     final dailyLimit = cycle.calculateDailyLimit();
@@ -18,6 +20,7 @@ class FinanceCalculatorService implements IFinanceCalculatorService {
 
   @override
   bool checkThreshold(double totalSpent, double limit) {
+    // Returns true if 75% or more of the limit has been reached.
     return totalSpent >= limit * 0.75;
   }
 

@@ -1,11 +1,24 @@
+/// Represents a single financial transaction or expenditure.
 class Expense {
+  /// The unique identifier for the expense.
   final int? id;
+
+  /// The monetary amount of the expense.
   final double amount;
+
+  /// An optional note or description for the expense.
   final String? note;
+
+  /// The ID of the [Category] this expense belongs to.
   final int? categoryId;
+
+  /// The date and time when the expense occurred.
   final DateTime date;
+
+  /// The ID of the [User] who recorded this expense.
   final int? userId;
 
+  /// Creates an [Expense] instance.
   Expense({
     this.id,
     required this.amount,
@@ -15,6 +28,7 @@ class Expense {
     this.userId,
   });
 
+  /// Converts the [Expense] instance into a [Map] for storage.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -26,6 +40,7 @@ class Expense {
     };
   }
 
+  /// Creates an [Expense] instance from a [Map].
   factory Expense.fromMap(Map<String, dynamic> map) {
     return Expense(
       id: map['id'] as int?,
@@ -37,6 +52,7 @@ class Expense {
     );
   }
 
+  /// Creates a copy of this expense with updated fields.
   Expense copyWith({
     int? id,
     double? amount,

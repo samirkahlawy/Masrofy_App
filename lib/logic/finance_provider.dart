@@ -8,8 +8,13 @@ import '../models/budget_cycle.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
 
+/// A comprehensive provider that orchestrates high-level finance data, 
+/// including categories, current cycles, and calculated metrics.
 class FinanceProvider extends ChangeNotifier {
+  /// The underlying data source.
   final IFinanceRepository repo;
+  
+  /// The service used for financial math.
   final FinanceCalculatorService calculator;
 
   BudgetCycle? currentCycle;
@@ -25,6 +30,7 @@ class FinanceProvider extends ChangeNotifier {
     : repo = repository ?? SqliteFinanceRepository(),
       calculator = FinanceCalculatorService();
 
+  /// Loads categories, the current cycle, and calculates spending summaries.
   Future<void> loadInitialData() async {
     isLoading = true;
     notifyListeners();
@@ -67,6 +73,7 @@ class FinanceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Populates the database with default categories if they don't exist.
   Future<void> _saveDefaultCategories() async {
     final defaultCategories = [
       Category(name: 'طعام', iconPath: null),
@@ -81,6 +88,7 @@ class FinanceProvider extends ChangeNotifier {
     }
   }
 
+  /// Creates a new [BudgetCycle] and reloads data.
   Future<void> createBudgetCycle(double totalAllowance) async {
     final cycle = BudgetCycle(
       userId: 1,
@@ -94,6 +102,7 @@ class FinanceProvider extends ChangeNotifier {
     await loadInitialData();
   }
 
+  /// Adds a new expense and refreshes all metrics.
   Future<void> addNewExpense(double amount, String note, int categoryId) async {
     if (currentCycle == null) return;
     final expense = Expense(
@@ -107,11 +116,13 @@ class FinanceProvider extends ChangeNotifier {
     await loadInitialData();
   }
 
+  /// Deletes an expense and refreshes metrics.
   Future<void> deleteExpense(int id) async {
     await repo.deleteExpense(id);
     await loadInitialData();
   }
 
+  /// Filters [expenses] to return only those recorded today.
   List<Expense> _getTodayExpenses() {
     final now = DateTime.now();
     return expenses.where((e) {
@@ -121,6 +132,7 @@ class FinanceProvider extends ChangeNotifier {
     }).toList();
   }
 
+  /// Recalculates UI state values like [safeDailyLimit] and [totalExpenses].
   void updateUIState() {
     totalExpenses = expenses.fold(0.0, (sum, expense) => sum + expense.amount);
     final todayExpenses = _getTodayExpenses();
@@ -131,6 +143,7 @@ class FinanceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wipes all application data from local storage.
   Future<void> resetData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('expenses');
